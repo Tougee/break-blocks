@@ -1,102 +1,109 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title></title>
-    <style media="screen">
-      canvas {
-        border:1px black solid
+
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <style media="screen">
+    canvas {
+      border: 1px black solid
+    }
+  </style>
+  <script src="game.js"></script>
+  <script src="paddle.js"></script>
+  <script src="ball.js"></script>
+  <script src="block.js"></script>
+  <script src="level.js"></script>
+  <script src="utils.js"></script>
+</head>
+
+<body>
+  <canvas id="id-canvas" width="400" height="300"></canvas>
+  <hr>
+  <input id="id-input-speed" type="range" value="1">
+</body>
+<script>
+  var loadLevel = function(n) {
+    n = n - 1
+    var level = levels[n]
+    var blocks = []
+    for (var i = 0; i < level.length; i++) {
+      var p = level[i]
+      var b = Block(p)
+      blocks.push(b)
+    }
+    return blocks
+  }
+
+  var blocks = []
+  var enableDebugMode = function(enable) {
+    if (!enable) {
+      return
+    }
+    window.paused = false
+    window.addEventListener('keydown', function(event) {
+      var k = event.key
+      if (k == 'p') {
+        window.paused = !window.paused
+      } else if ('1234567'.includes(k)) {
+        blocks = loadLevel(Number(k))
       }
-    </style>
-  </head>
-  <body>
-    <canvas id="id-canvas" width="400" height="300"></canvas>
-  </body>
-  <script>
-    var log = console.log.bind(console)
+    })
+    document.querySelector('#id-input-speed').addEventListener('input', function(even){
+      var input = event.target
+      window.fps = Number(input.value)
+    })
+  }
 
-    var imageFromPath = function(path) {
-        var image = new Image()
-        image.src = path
-        return image
+  var __main = function() {
+    enableDebugMode(true)
+
+    var game = Game(30)
+    var paddle = Paddle()
+    var ball = Ball()
+
+    blocks = loadLevel(1)
+
+    game.registerAction('a', function() {
+      paddle.moveLeft()
+    })
+    game.registerAction('d', function() {
+      paddle.moveRight()
+    })
+    game.registerAction('f', function() {
+      ball.fire()
+    })
+
+    game.update = function() {
+      ball.move()
+      if (paddle.collide(ball)) {
+        log('paddle collide ball')
+        ball.rebound()
+      }
+
+      for (var i = 0; i < blocks.length; i++) {
+        var block = blocks[i]
+        if (block.collide(ball)) {
+          log('block collide ball')
+          block.kill()
+          ball.rebound()
+        }
+      }
     }
 
-    var Paddle = function() {
-        var image = imageFromPath('paddle.png')
-        var o = {
-            image : image,
-            x : 100,
-            y : 200,
-            speed : 5,
+    game.draw = function() {
+      game.drawImage(ball)
+      game.drawImage(paddle)
+      for (var i = 0; i < blocks.length; i++) {
+        var block = blocks[i]
+        if (block.alive) {
+          game.drawImage(block)
         }
-        o.moveLeft = function() {
-            o.x -= o.speed
-        }
-        o.moveRight = function() {
-            o.x += o.speed
-        }
-        return o
+      }
     }
+  }
 
-    var Game = function() {
-        var g = {
-            actions : {},
-            keydowns : {},
-        }
-        var canvas = document.querySelector('#id-canvas')
-        var context = canvas.getContext('2d')
-        g.canvas = canvas
-        g.context = context
+  __main()
+</script>
 
-        window.addEventListener('keydown', function(event) {
-            g.keydowns[event.key] = true
-        })
-
-        window.addEventListener('keyup', function(event) {
-            g.keydowns[event.key] = false
-        })
-
-        g.registerAction = function(key, callback) {
-            g.actions[key] = callback
-        }
-
-        setInterval(function() {
-            log('setInterval')
-            var actions = Object.keys(g.actions)
-            for (var i = 0; i < actions.length; i++) {
-                var key = actions[i]
-                if (g.keydowns[key]) {
-                    g.actions[key]()
-                }
-            }
-
-            g.update()
-            context.clearRect(0, 0, canvas.width, canvas.height)
-            g.draw()
-
-        }, 1000/30)
-
-        return g
-    }
-
-    var __main = function() {
-        var game = Game()
-        var paddle = Paddle()
-
-        game.registerAction('a', function() {
-            paddle.moveLeft()
-        })
-        game.registerAction('d', function() {
-            paddle.moveRight()
-        })
-
-        game.update = function() {
-        }
-        game.draw = function() {
-            game.context.drawImage(paddle.image, paddle.x, paddle.y)
-        }
-    }
-
-    __main()
-  </script>
 </html>
